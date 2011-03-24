@@ -1,0 +1,121 @@
+# vim: filetype=python autoindent tabstop=4 expandtab shiftwidth=4 softtabstop=4
+
+"""
+pragati.nationalinterest.in
+
+background: http://antrix.net/posts/2011/pragati-kindle/
+"""
+import string, re
+import datetime
+
+from calibre.web.feeds.news import BasicNewsRecipe
+from calibre.ebooks.BeautifulSoup import Tag, NavigableString
+
+class PragatiRecipe(BasicNewsRecipe):
+
+    __author__ = 'Deepak Sarda'
+
+    today = datetime.datetime.now()
+
+    title      = 'Pragati' + today.strftime(' %B %Y')
+    description = 'The Indian National Interest Review'
+    publisher = 'The Takshashila Institution'
+    category = 'news, opinion, politics'
+    isbn = '0973-8460'
+    publication_type = 'magazine'
+    language = 'en'
+    timefmt = ' %B %Y'
+
+    INDEX = 'http://pragati.nationalinterest.in/'
+
+    keep_only_tags = [dict(name='div', attrs={'id':'single'})]
+    remove_tags_after = [dict(name='p', attrs={'class':'tags tabs'})] 
+    no_stylesheets = True
+
+    # TODO: Get better image!
+    #def get_masthead_url(self):
+    #    return self.INDEX + 'wp-content/uploads/2010/09/pragati-logo-cl.png'
+
+    def parse_index(self):
+        articles = []
+        slug = self.INDEX + self.today.strftime("%Y/%m/")
+        keep_going = True
+
+        is_pager = lambda(val): 'navigation' in val
+
+        while keep_going:
+
+            self.log('will fetch ', slug)
+            soup = self.index_to_soup(slug)
+
+            posts = soup.find('div', attrs={'id':'posts'})
+            for post in posts.findAll('div', attrs={'class':'content'}):
+                #self.log('the post: ', post)
+                h = post.find('h2')
+                title = self.tag_to_string(h)
+                a = h.find('a', href=True)
+                url = a['href']
+                if url.startswith('/'):
+                    url = self.INDEX.rstrip('/') + url
+                self.log('Found article:', title, 'at', url)
+
+                paras = post.findAll('p')
+
+                desc = None
+                timestamp = None
+                for p in paras:
+                    if not p.has_key('class'): # paragraphs without class attribute
+                        desc = self.tag_to_string(p)
+                        # self.log('\t\t', desc)
+                    elif p['class'] == 'postmetadata':
+                        tstamp = p.find('span', attrs={'class':'timestamp'})
+                        timestamp = self.tag_to_string(tstamp)
+
+                articles.append({'title':title, 'url':url, 'description':desc, 'date': timestamp})
+            
+            keep_going = False
+
+            pager = posts.find('div', attrs={'class': is_pager})
+            if not pager:
+                break
+
+            pager_links = pager.findAll('a', href=True)
+            if not pager_links:
+                break
+
+            for link in pager_links:
+                if 'OLDER' in self.tag_to_string(link).upper():
+                    slug = link['href']
+                    self.log('found another older link to follow', slug)
+                    keep_going = True
+                    break
+            
+                   
+        feeds = [("Articles" , articles)]
+
+        return feeds
+
+    def populate_article_metadata(self, article, soup, first):
+        
+        is_metadata_para = lambda(val): 'postmetadata' in val
+
+        def recurse_delete(tag):
+            if tag.nextSibling:
+                recurse_delete(tag.nextSibling)
+            tag.extract()
+
+        metadata = soup.find('p', attrs={'class': is_metadata_para})
+
+        if not metadata: return
+
+        author = metadata.find('strong')
+
+        if not author: return
+
+        author_text = self.tag_to_string(author)
+        article.author = author_text
+        self.log('found author', article.author, 'for article', article.title)
+        
+        # Rip out everything after author including
+        # 'publish time' and 'comments link' from metadata
+        recurse_delete(author.nextSibling)
