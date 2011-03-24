@@ -15,9 +15,8 @@ class PragatiRecipe(BasicNewsRecipe):
 
     __author__ = 'Deepak Sarda'
 
-    today = datetime.datetime.now()
 
-    title      = 'Pragati' + today.strftime(' %B %Y')
+    title      = 'Pragati'
     description = 'The Indian National Interest Review'
     publisher = 'The Takshashila Institution'
     category = 'news, opinion, politics'
@@ -38,7 +37,9 @@ class PragatiRecipe(BasicNewsRecipe):
 
     def parse_index(self):
         articles = []
-        slug = self.INDEX + self.today.strftime("%Y/%m/")
+
+        today = datetime.datetime.now()
+        slug = self.INDEX + today.strftime("%Y/%m/")
         keep_going = True
 
         is_pager = lambda(val): 'navigation' in val
