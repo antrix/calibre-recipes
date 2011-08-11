@@ -27,7 +27,11 @@ class PragatiRecipe(BasicNewsRecipe):
     INDEX = 'http://pragati.nationalinterest.in/'
 
     keep_only_tags = [dict(name='div', attrs={'id':'single'})]
-    remove_tags_after = [dict(name='p', attrs={'class':'tags tabs'})] 
+    remove_tags = [dict(name='div', attrs={'class':'share'}), 
+                   dict(name='div', attrs={'class':'sharepost'}),
+                   dict(name='div', attrs={'class':'banner'}), 
+                   dict(name='div', attrs={'class':'post-comments'})] 
+    remove_tags_after = [dict(name='div', attrs={'class':'tags tabs'})] 
     no_stylesheets = True
 
     def get_masthead_url(self):
