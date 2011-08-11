@@ -8,8 +8,27 @@ background: http://antrix.net/posts/2011/pragati-kindle/
 import string, re
 import datetime
 
+from calibre.ebooks.metadata import MetaInformation
 from calibre.web.feeds.news import BasicNewsRecipe
 from calibre.ebooks.BeautifulSoup import Tag, NavigableString
+
+# For whatever reason, Calibre's BasicNewsRecipe
+# uses the __appname__ (i.e. 'calibre') as the author & publisher.
+# So we monkey patch the MetaInformation class to always
+# supply these values as we want
+
+def metainfo__getattribute__(self, name):
+    if name == 'author_sort':
+        return PragatiRecipe.author
+    elif name in ('author', 'authors'):
+        return [PragatiRecipe.author]
+    elif name == 'publisher':
+        return PragatiRecipe.publisher
+    else:
+        return object.__getattribute__(self, name)
+
+MetaInformation.__getattribute__ = metainfo__getattribute__
+# end monkey patching
 
 class PragatiRecipe(BasicNewsRecipe):
 
@@ -17,6 +36,7 @@ class PragatiRecipe(BasicNewsRecipe):
 
     title      = 'Pragati'
     description = 'The Indian National Interest Review'
+    author = 'The Indian National Interest Review'
     publisher = 'The Takshashila Institution'
     category = 'news, opinion, politics'
     isbn = '0973-8460'
